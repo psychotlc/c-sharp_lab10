@@ -7,6 +7,6 @@ public class DBMySQLUtils
     public static MySqlConnection GetDBConnection(string connectionString)
     {
 
-        return new MySqlConnection(connectionString);
+        return new MySqlConnection(connectionString); // no comment
     }
 }

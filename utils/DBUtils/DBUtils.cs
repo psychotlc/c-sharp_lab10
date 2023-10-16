@@ -5,10 +5,10 @@ namespace Utils.SqlConn;
 
 public class DBUtils
 {
-    // Подключается к бд
+    // connect to db
     public static MySqlConnection GetDBConnection()
     {
-        var config = File.ReadAllText($"/home/narek/Documents/C#/lab10/configs/config.json");
+        var config = File.ReadAllText($"/home/narek/Documents/C#/lab10/configs/config.json"); // config.json look like {"DATABASE_URI" : "Server=server;Port=port;Database=database;User=username;Password=password;"}
 
         dynamic jsonConfig = Newtonsoft.Json.JsonConvert.DeserializeObject(config);
 

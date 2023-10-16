@@ -32,9 +32,14 @@ app.MapGet("/save-current-ticker-prices", async () => {
     long currentUnixTimestamp = ((DateTimeOffset)currentTimestamp).ToUnixTimeSeconds();
     long oneDayAgoUnixTimestamp = ((DateTimeOffset)oneDayAgo).ToUnixTimeSeconds();
 
+
+    // connection for SELECT sql request
+
     MySqlConnection selectConnection = DBUtils.GetDBConnection();
 
     selectConnection.Open();
+
+    // command for SELECT sql request
 
     MySqlCommand selectCommand = selectConnection.CreateCommand();
 
@@ -59,6 +64,7 @@ app.MapGet("/save-current-ticker-prices", async () => {
             }
 
             var parsedResponse = await CSVParse.Parse(response);
+            
             double price;
             try{
                 price = Convert.ToDouble(parsedResponse[1]);
@@ -68,18 +74,25 @@ app.MapGet("/save-current-ticker-prices", async () => {
                 continue;
             }
 
+            // SELECT request
+
             selectCommand.CommandText = $"SELECT * FROM tickers WHERE ticker = '{ticker}'";
 
+            // create connection for UPDATE/INSERT requests
             MySqlConnection updateConnection = DBUtils.GetDBConnection();
 
             updateConnection.Open();
 
+            // command for UPDATE/INSERT requests
             MySqlCommand updateCommand = updateConnection.CreateCommand();
 
             using DbDataReader SQLReader = selectCommand.ExecuteReader();
             {
                 if (SQLReader.HasRows)
                 {
+                    // if we have in "tickers" tabel entry about ticker with name {ticker}
+                    // we update columns for ticker_id={ticker_id} in "prices" tabel
+
                     SQLReader.Read();
                     int ticker_id = Convert.ToInt32(SQLReader.GetValue(0));
                     updateCommand.CommandText = $"UPDATE prices SET price = {price}, date = '{currentTimestamp.ToString("yyyy-MM-dd")}' WHERE ticker_id = {ticker_id}";
@@ -87,6 +100,8 @@ app.MapGet("/save-current-ticker-prices", async () => {
                 }
                 else
                 {
+                    // if not we insert new information about {ticker} into tabels "prices" and "tickers"
+
                     updateCommand.CommandText = $"INSERT INTO tickers (ticker) VALUES ('{ticker}')";
                     updateCommand.ExecuteNonQuery();
 
@@ -95,10 +110,12 @@ app.MapGet("/save-current-ticker-prices", async () => {
                     updateCommand.ExecuteNonQuery();
                 }
             }
-
+            // close connection
             updateConnection.Close();
         }
     }
+
+    // close connection
 
     selectConnection.Close();
 

@@ -3,8 +3,11 @@ namespace Utils.Requests;
 
 public class HttpGet{
 
+    
     public static async Task<string> Get(string url)
     {
+        // http GET request to "url" 
+
         using (HttpClient httpClient = new HttpClient())
         {
             try

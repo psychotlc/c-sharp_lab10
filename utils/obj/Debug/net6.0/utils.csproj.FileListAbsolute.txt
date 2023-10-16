@@ -1,0 +1,12 @@
+/home/narek/Documents/C#/lab10/utils/bin/Debug/net6.0/utils.deps.json
+/home/narek/Documents/C#/lab10/utils/bin/Debug/net6.0/utils.dll
+/home/narek/Documents/C#/lab10/utils/bin/Debug/net6.0/utils.pdb
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/utils.csproj.AssemblyReference.cache
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/utils.GeneratedMSBuildEditorConfig.editorconfig
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/utils.AssemblyInfoInputs.cache
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/utils.AssemblyInfo.cs
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/utils.csproj.CoreCompileInputs.cache
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/utils.dll
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/refint/utils.dll
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/utils.pdb
+/home/narek/Documents/C#/lab10/utils/obj/Debug/net6.0/ref/utils.dll

@@ -27,7 +27,7 @@ var app = builder.Build();
 app.UseCors();
 
 
-app.MapGet("/save-current-ticker-prices", async () => {
+app.MapGet("/tickers/save-current-ticker-prices", async () => {
     DateTime todayDatetime = DateTime.Today;
     DateTime yesterdayDatetime = todayDatetime.AddDays(-1);
 
@@ -97,7 +97,7 @@ app.MapGet("/save-current-ticker-prices", async () => {
 
 });
 
-app.MapGet("/get-todays-condition", async (HttpContext context) => {
+app.MapGet("/tickers/get-todays-condition", async (HttpContext context) => {
     string ticker = context.Request.Query["ticker"];
 
     DateTime todayDatetime = DateTime.Today;
@@ -188,6 +188,33 @@ app.MapGet("/get-todays-condition", async (HttpContext context) => {
             
         }
     }
+
+});
+
+app.MapGet("/tickers/get-all-tickers", () => {
+
+    MySqlConnection selectConnection = DBUtils.GetDBConnection();
+
+    selectConnection.Open();
+
+    MySqlCommand selectCommand = selectConnection.CreateCommand();
+
+    selectCommand.CommandText = "SELECT ticker FROM tickers";
+
+    List <object> result = new List<object>();
+
+    using (DbDataReader SQLReader = selectCommand.ExecuteReader())
+    {
+        while(SQLReader.Read())
+        {
+            object ticker = SQLReader.GetValue(0);
+            result.Add(ticker);
+        }
+    }
+
+    selectConnection.Close();
+
+    return result;
 
 });
 

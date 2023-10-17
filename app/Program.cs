@@ -1,11 +1,8 @@
-using Utils.Requests;
-using Utils.Parsers;
 using Utils.TickerUtils;
 
 using Utils.SqlConn;
 using MySqlConnector;
 using System.Data.Common;
-using ZstdSharp;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,7 +45,17 @@ app.MapGet("/tickers/save-current-ticker-prices", async () => {
 
         while ((ticker = reader.ReadLine()) != null){
 
-            double price = await Ticker.GetTodayPrice(ticker);
+            double price;
+            try{
+
+                price = await Ticker.GetTodayPrice(ticker);
+
+            }
+            catch(Exception err){
+                Console.WriteLine($"404 not found for ticker = {ticker}");
+                continue;
+            }
+
 
             // SELECT request
 
@@ -130,7 +137,8 @@ app.MapGet("/tickers/get-todays-condition", async (HttpContext context) => {
         if (SQLReader.HasRows)
         {
             SQLReader.Read();
-            if (SQLReader.GetValue(1) == todayDatetime.ToString("yyyy-MM-dd")) 
+            
+            if (DateTime.Equals(SQLReader.GetValue(1), todayDatetime))  
             {
                 return SQLReader.GetValue(0);
             }
@@ -152,7 +160,7 @@ app.MapGet("/tickers/get-todays-condition", async (HttpContext context) => {
                     return state;
                 }
                 catch (Exception err){
-                    return "finance.yahoo doesn't work. Try attempt later";
+                    throw new Exception("finance yahoo doesn't work. Please try again later");
                 }
             }
 
@@ -179,13 +187,8 @@ app.MapGet("/tickers/get-todays-condition", async (HttpContext context) => {
 
             catch(Exception err)
             {
-                return "finance.yahoo doesn't work. Try attempt later";
+                throw new Exception("finance yahoo doesn't work. Please try again later");
             }
-            
-            
-            
-
-            
         }
     }
 

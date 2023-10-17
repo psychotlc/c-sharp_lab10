@@ -1,9 +1,11 @@
 using Utils.Requests;
 using Utils.Parsers;
+using Utils.TickerUtils;
 
 using Utils.SqlConn;
 using MySqlConnector;
 using System.Data.Common;
+using ZstdSharp;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,12 +28,8 @@ app.UseCors();
 
 
 app.MapGet("/save-current-ticker-prices", async () => {
-    DateTime currentTimestamp = DateTime.Now;
-    DateTime oneDayAgo = currentTimestamp.AddDays(-1);
-
-    long currentUnixTimestamp = ((DateTimeOffset)currentTimestamp).ToUnixTimeSeconds();
-    long oneDayAgoUnixTimestamp = ((DateTimeOffset)oneDayAgo).ToUnixTimeSeconds();
-
+    DateTime todayDatetime = DateTime.Today;
+    DateTime yesterdayDatetime = todayDatetime.AddDays(-1);
 
     // connection for SELECT sql request
 
@@ -50,29 +48,7 @@ app.MapGet("/save-current-ticker-prices", async () => {
 
         while ((ticker = reader.ReadLine()) != null){
 
-            string url =    $"https://query1.finance.yahoo.com/v7/finance/download/"    +
-                                    $"{ticker}?period1={oneDayAgoUnixTimestamp}&period2={currentUnixTimestamp}" +
-                                    "&interval=1d&events=history&includeAdjustedClose=true";
-            
-            string response;
-            try{
-                response = await HttpGet.Get(url);
-            }
-            catch(Exception e) {
-                Console.WriteLine($"url with ticker = {ticker} not Found");
-                continue;
-            }
-
-            var parsedResponse = await CSVParse.Parse(response);
-            
-            double price;
-            try{
-                price = Convert.ToDouble(parsedResponse[1]);
-            }
-            catch{
-                Console.WriteLine($"Wrong price in response for ticker = {ticker}");
-                continue;
-            }
+            double price = await Ticker.GetTodayPrice(ticker);
 
             // SELECT request
 
@@ -86,7 +62,7 @@ app.MapGet("/save-current-ticker-prices", async () => {
             // command for UPDATE/INSERT requests
             MySqlCommand updateCommand = updateConnection.CreateCommand();
 
-            using DbDataReader SQLReader = selectCommand.ExecuteReader();
+            using (DbDataReader SQLReader = selectCommand.ExecuteReader())
             {
                 if (SQLReader.HasRows)
                 {
@@ -95,7 +71,7 @@ app.MapGet("/save-current-ticker-prices", async () => {
 
                     SQLReader.Read();
                     int ticker_id = Convert.ToInt32(SQLReader.GetValue(0));
-                    updateCommand.CommandText = $"UPDATE prices SET price = {price}, date = '{currentTimestamp.ToString("yyyy-MM-dd")}' WHERE ticker_id = {ticker_id}";
+                    updateCommand.CommandText = $"UPDATE prices SET price = {price}, date = '{todayDatetime.ToString("yyyy-MM-dd")}' WHERE ticker_id = {ticker_id}";
                     updateCommand.ExecuteNonQuery();
                 }
                 else
@@ -106,7 +82,7 @@ app.MapGet("/save-current-ticker-prices", async () => {
                     updateCommand.ExecuteNonQuery();
 
                     long ticker_id = updateCommand.LastInsertedId;
-                    updateCommand.CommandText = $"INSERT INTO prices (ticker_id, price, date) VALUES ({ticker_id}, {price}, '{currentTimestamp.ToString("yyyy-MM-dd")}')";
+                    updateCommand.CommandText = $"INSERT INTO prices (ticker_id, price, date) VALUES ({ticker_id}, {price}, '{todayDatetime.ToString("yyyy-MM-dd")}')";
                     updateCommand.ExecuteNonQuery();
                 }
             }
@@ -118,6 +94,100 @@ app.MapGet("/save-current-ticker-prices", async () => {
     // close connection
 
     selectConnection.Close();
+
+});
+
+app.MapGet("/get-todays-condition", async (HttpContext context) => {
+    string ticker = context.Request.Query["ticker"];
+
+    DateTime todayDatetime = DateTime.Today;
+    DateTime yesterdayDatetime = todayDatetime.AddDays(-1);
+
+
+    MySqlConnection selectConnection = DBUtils.GetDBConnection();
+    MySqlConnection updateConnection = DBUtils.GetDBConnection();
+
+    selectConnection.Open();
+    updateConnection.Open();
+
+    MySqlCommand selectCommand = selectConnection.CreateCommand();
+    MySqlCommand updateCommand = updateConnection.CreateCommand();
+
+    selectCommand.CommandText = $"SELECT id FROM tickers WHERE ticker = '{ticker}'";
+    object ticker_id;
+    using (DbDataReader SQLReader = selectCommand.ExecuteReader())
+    {
+        SQLReader.Read();
+        ticker_id = SQLReader.GetValue(0);
+    }
+
+    selectCommand.CommandText = " SELECT todays_condition.state, prices.date FROM prices " + 
+                                " INNER JOIN todays_condition ON todays_condition.ticker_id = prices.ticker_id " +
+                                $" WHERE prices.ticker_id = {ticker_id} " ;
+
+    using (DbDataReader SQLReader = selectCommand.ExecuteReader())
+    {
+        if (SQLReader.HasRows)
+        {
+            SQLReader.Read();
+            if (SQLReader.GetValue(1) == todayDatetime.ToString("yyyy-MM-dd")) 
+            {
+                return SQLReader.GetValue(0);
+            }
+            else
+            {
+                
+                try{
+                    
+
+                    double currentPrice = await Ticker.GetTodayPrice(ticker);
+                    double oneDayAgoPrice = await Ticker.GetYesterdayPrice(ticker);
+                    double state = currentPrice - oneDayAgoPrice;
+                    updateCommand.CommandText = $" UPDATE prices SET price={currentPrice}, "  + 
+                                                $" date='{todayDatetime.ToString("yyyy-MM-dd")}' WHERE ticker_id = {ticker_id}; " +
+                                                
+                                                $" UPDATE todays_condition SET state = {state} WHERE ticker_id = {ticker_id}";
+                    
+                    updateCommand.ExecuteNonQuery();
+                    return state;
+                }
+                catch (Exception err){
+                    return "finance.yahoo doesn't work. Try attempt later";
+                }
+            }
+
+        }
+        else 
+        {
+            try{
+
+                DateTime oneDayAgo = DateTime.Now.AddDays(-1);
+
+                double currentPrice = await Ticker.GetTodayPrice(ticker);
+                double oneDayAgoPrice = await Ticker.GetYesterdayPrice(ticker);
+
+                double state = currentPrice - oneDayAgoPrice;
+
+                updateCommand.CommandText = $" UPDATE prices SET price={currentPrice}, "  + 
+                                            $" date='{todayDatetime.ToString("yyyy-MM-dd")}' WHERE ticker_id= {ticker_id}; " +
+                                            
+                                            $"INSERT INTO todays_condition (ticker_id, state) VALUES ({ticker_id}, {state})";
+                
+                updateCommand.ExecuteNonQuery();
+                return state;
+            }
+
+            catch(Exception err)
+            {
+                return "finance.yahoo doesn't work. Try attempt later";
+            }
+            
+            
+            
+
+            
+        }
+    }
 
 });
 

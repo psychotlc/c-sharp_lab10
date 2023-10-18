@@ -31,8 +31,8 @@ public class Ticker{
     public static async Task<double> GetYesterdayPrice(string ticker)
     {
 
-        DateTime yesterday = DateTime.Today.AddDays(-1);
-        DateTime twoDayAgo = yesterday.AddDays(-2);
+        DateTime yesterday = DateTime.Today.AddDays(-2);
+        DateTime twoDayAgo = yesterday.AddDays(-3);
 
         long yesterdayUnixTimestamp = ((DateTimeOffset)yesterday).ToUnixTimeSeconds();
         long twoDayAgoUnixTimestamp = ((DateTimeOffset)twoDayAgo).ToUnixTimeSeconds();
